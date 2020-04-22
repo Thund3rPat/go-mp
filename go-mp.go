@@ -54,16 +54,17 @@ func play(song string) {
 	// Init Speaker
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 
-	go renderBar(streamer, format)
-
 	// Play and wait until song is finished
 	done := make(chan bool)
 	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
 		done <- true
 	})))
 
+	renderBar(streamer, format)
+
 	<-done
 }
+
 func playDirectory() []string {
 	var listofsongs []string
 
