@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/faiface/beep"
+	"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/wav"
@@ -41,6 +42,8 @@ func play(song string) {
 		streamer, format, err = mp3.Decode(file)
 	case ".wav":
 		streamer, format, err = wav.Decode(file)
+	case ".flac":
+		streamer, format, err = flac.Decode(file)
 	default:
 		log.Fatal("File not supported!")
 	}
