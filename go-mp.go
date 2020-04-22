@@ -14,6 +14,7 @@ import (
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/wav"
+	"github.com/schollz/progressbar"
 )
 
 var directory = flag.Bool("d", false, "Enable this flag to open a directory")
@@ -53,6 +54,8 @@ func play(song string) {
 	// Init Speaker
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 
+	go renderBar(streamer, format)
+
 	// Play and wait until song is finished
 	done := make(chan bool)
 	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
@@ -79,6 +82,24 @@ func playDirectory() []string {
 	}
 
 	return listofsongs
+}
+
+// return song duration
+func getDuration(streamer beep.StreamSeekCloser, format beep.Format) int {
+	min := int(float32(streamer.Len()) / float32(format.SampleRate))
+	sec := min % 60
+
+	return min + sec
+}
+
+func renderBar(streamer beep.StreamSeekCloser, format beep.Format) {
+	d := getDuration(streamer, format)
+
+	bar := progressbar.NewOptions(d, progressbar.OptionSetPredictTime(false), progressbar.OptionShowCount())
+	for i := 0; i < d; i++ {
+		bar.Add(1)
+		time.Sleep(time.Second)
+	}
 }
 
 func main() {
