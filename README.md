@@ -12,7 +12,7 @@ $ ./go-mp -d [directory]
 - [x] play mp3 files
 - [x] add wav support
 - [x] add flac support
-- [ ] Show time or add progressbar
+- [x] Show time or add progressbar
 - [ ] Play/Pause
 - [ ] Volume
 - [x] possibilty to play multiple files successively
