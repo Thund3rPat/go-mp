@@ -33,12 +33,11 @@ func play(song string) {
 
 	// Open Song file and get extension
 	file, err := os.Open(song)
-	filetype := path.Ext(song)
 	check(err)
 	defer file.Close()
 
 	// Check for extension and choose right decoder
-	switch filetype {
+	switch path.Ext(song) {
 	case ".mp3":
 		streamer, format, err = mp3.Decode(file)
 	case ".wav":
@@ -46,7 +45,8 @@ func play(song string) {
 	case ".flac":
 		streamer, format, err = flac.Decode(file)
 	default:
-		log.Fatal("File not supported!")
+		fmt.Fprintln(os.Stderr, "File not supported!")
+		return
 	}
 	check(err)
 	defer streamer.Close()
@@ -63,6 +63,24 @@ func play(song string) {
 	renderBar(streamer, format)
 
 	<-done
+}
+
+// return song duration
+func getDuration(streamer beep.StreamSeekCloser, format beep.Format) time.Duration {
+
+	d := time.Duration(streamer.Len()) * format.SampleRate.D(1)
+	return d.Round(time.Second)
+}
+
+func renderBar(streamer beep.StreamSeekCloser, format beep.Format) {
+	d := getDuration(streamer, format)
+	seconds := int(float64(d) / float64(time.Second))
+
+	bar := progressbar.NewOptions(seconds, progressbar.OptionSetPredictTime(false), progressbar.OptionShowCount())
+	for i := 0; i < seconds; i++ {
+		bar.Add(1)
+		time.Sleep(time.Second)
+	}
 }
 
 func playDirectory() []string {
@@ -83,24 +101,6 @@ func playDirectory() []string {
 	}
 
 	return listofsongs
-}
-
-// return song duration
-func getDuration(streamer beep.StreamSeekCloser, format beep.Format) int {
-	min := int(float32(streamer.Len()) / float32(format.SampleRate))
-	sec := min % 60
-
-	return min + sec
-}
-
-func renderBar(streamer beep.StreamSeekCloser, format beep.Format) {
-	d := getDuration(streamer, format)
-
-	bar := progressbar.NewOptions(d, progressbar.OptionSetPredictTime(false), progressbar.OptionShowCount())
-	for i := 0; i < d; i++ {
-		bar.Add(1)
-		time.Sleep(time.Second)
-	}
 }
 
 func main() {
