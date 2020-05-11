@@ -7,6 +7,7 @@ A minimal Commandline Music Player written in pure Go!
 $ ./go-mp [file] [file] ...
 $ ./go-mp -d [directory]
 ```
+![Screenshot of go-mp](https://github.com/Thund3rPat/go-mp/blob/master/screenshot.png)
 
 ## Todo
 - [x] play mp3 files
