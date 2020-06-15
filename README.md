@@ -10,11 +10,6 @@ $ ./go-mp -d [directory]
 ![Screenshot of go-mp](https://github.com/Thund3rPat/go-mp/blob/master/screenshot.png)
 
 ## Todo
-- [x] play mp3 files
-- [x] add wav support
-- [x] add flac support
-- [x] Show time or add progressbar
-- [ ] Play/Pause
-- [ ] Volume
-- [x] possibilty to play multiple files successively
-- [x] play whole directory with -d flag 
+- [ ] Volume with Arrow Key Up & Down + Volume Indicator
+- [ ] Better way to listen to key events (maybe use tcell?)
+- [ ] Progressbar doesn't stop when Paused
