@@ -17,7 +17,7 @@ import (
 	"github.com/schollz/progressbar"
 )
 
-var directory = flag.Bool("d", false, "Enable this flag to open a directory")
+var directory = flag.Bool("d", false, "Enable this flag to play a whole Directory")
 
 // Outsource error handling
 func check(e error) {
@@ -27,49 +27,35 @@ func check(e error) {
 }
 
 func play(song string) {
-	var streamer beep.StreamSeekCloser
-	var format beep.Format
-	var err error
-
 	// Open Song file and get extension
 	file, err := os.Open(song)
 	check(err)
 	defer file.Close()
 
 	// Check for extension and choose right decoder
-	switch path.Ext(song) {
-	case ".mp3":
-		streamer, format, err = mp3.Decode(file)
-	case ".wav":
-		streamer, format, err = wav.Decode(file)
-	case ".flac":
-		streamer, format, err = flac.Decode(file)
-	default:
-		fmt.Fprintln(os.Stderr, "File not supported!")
-		return
-	}
+	streamer, format, err := getStreamer(path.Ext(song), file)
 	check(err)
 	defer streamer.Close()
 
 	// Init Speaker
 	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 
-	// Play and wait until song is finished
-	done := make(chan bool)
-	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
-		done <- true
-	})))
+	// Wrap in controller
+	ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer), Paused: false}
+
+	speaker.Play(ctrl)
+
+	go func() {
+		for {
+			fmt.Scanln()
+
+			speaker.Lock()
+			ctrl.Paused = !ctrl.Paused
+			speaker.Unlock()
+		}
+	}()
 
 	renderBar(streamer, format)
-
-	<-done
-}
-
-// return song duration
-func getDuration(streamer beep.StreamSeekCloser, format beep.Format) time.Duration {
-
-	d := time.Duration(streamer.Len()) * format.SampleRate.D(1)
-	return d.Round(time.Second)
 }
 
 func renderBar(streamer beep.StreamSeekCloser, format beep.Format) {
@@ -81,6 +67,33 @@ func renderBar(streamer beep.StreamSeekCloser, format beep.Format) {
 		bar.Add(1)
 		time.Sleep(time.Second)
 	}
+}
+
+// return song duration
+func getDuration(streamer beep.StreamSeekCloser, format beep.Format) time.Duration {
+
+	d := time.Duration(streamer.Len()) * format.SampleRate.D(1)
+	return d.Round(time.Second)
+}
+
+// return streamer dependend of file extension
+func getStreamer(extension string, file *os.File) (beep.StreamSeekCloser, beep.Format, error) {
+	var streamer beep.StreamSeekCloser
+	var format beep.Format
+	var err error
+
+	switch extension {
+	case ".mp3":
+		streamer, format, err = mp3.Decode(file)
+	case ".wav":
+		streamer, format, err = wav.Decode(file)
+	case ".flac":
+		streamer, format, err = flac.Decode(file)
+	default:
+		fmt.Fprintf(os.Stderr, "This Filetype is not supported!: %v\n", extension)
+		os.Exit(1)
+	}
+	return streamer, format, err
 }
 
 func playDirectory() []string {
