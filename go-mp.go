@@ -17,13 +17,8 @@ import (
 	"github.com/schollz/progressbar"
 )
 
-var directory = flag.Bool("d", false, "Enable this flag to play a whole Directory")
-
-// Outsource error handling
-func check(e error) {
-	if e != nil {
-		log.Fatal(e)
-	}
+func usage() {
+	fmt.Printf("Usage: $ go-mp [file/directory],\nYou can pass any number of arguments\n")
 }
 
 func play(song string) {
@@ -33,8 +28,7 @@ func play(song string) {
 	defer file.Close()
 
 	// Check for extension and choose right decoder
-	streamer, format, err := getStreamer(path.Ext(song), file)
-	check(err)
+	streamer, format := getStreamer(path.Ext(song), file)
 	defer streamer.Close()
 
 	// Init Speaker
@@ -77,7 +71,7 @@ func getDuration(streamer beep.StreamSeekCloser, format beep.Format) time.Durati
 }
 
 // return streamer dependend of file extension
-func getStreamer(extension string, file *os.File) (beep.StreamSeekCloser, beep.Format, error) {
+func getStreamer(extension string, file *os.File) (beep.StreamSeekCloser, beep.Format) {
 	var streamer beep.StreamSeekCloser
 	var format beep.Format
 	var err error
@@ -90,54 +84,54 @@ func getStreamer(extension string, file *os.File) (beep.StreamSeekCloser, beep.F
 	case ".flac":
 		streamer, format, err = flac.Decode(file)
 	default:
-		fmt.Fprintf(os.Stderr, "This Filetype is not supported!: %v\n", extension)
-		os.Exit(1)
+		log.Fatalf("This Filetype is not supported!: %v\n", extension)
 	}
-	return streamer, format, err
+	check(err)
+	return streamer, format
 }
 
-func playDirectory() []string {
-	var listofsongs []string
-
-	// Open directory
-	files, err := os.Open(flag.Arg(0))
-	check(err)
-	defer files.Close()
-
-	// Get slice of name in directory
-	names, err := files.Readdirnames(0)
-	check(err)
-
-	// append path to listofsongs
-	for _, v := range names {
-		listofsongs = append(listofsongs, filepath.Join(flag.Arg(0), v))
+// Outsource error handling
+func check(e error) {
+	if e != nil {
+		log.Fatal(e)
 	}
+}
 
-	return listofsongs
+func prepareSongList(args []string) []string {
+	var list []string
+
+	for _, element := range args {
+		fi, err := os.Stat(element)
+
+		switch {
+		case err != nil:
+			log.Fatalln("There seems to be a Problem: ", err)
+		case fi.IsDir():
+			f, err := os.Open(element)
+			check(err)
+			dir, err := f.Readdirnames(0)
+			check(err)
+			for _, item := range dir {
+				list = append(list, filepath.Join(element, item))
+			}
+		default:
+			list = append(list, element)
+		}
+	}
+	return list
 }
 
 func main() {
-	var songs []string
-
+	flag.Usage = usage
 	flag.Parse()
-
 	if flag.NArg() == 0 {
-		log.Fatal("No files to be played specified!")
+		log.Fatalln("No files to be played specified!")
 	}
 
-	// Check if -d flag is set
-	if *directory {
-		// Get songlist from directory
-		songs = playDirectory()
-	} else {
-		// Get songlist from Parameters
-		songs = flag.Args()
-	}
+	songList := prepareSongList(flag.Args())
 
-	// Play
-	for _, song := range songs {
-		fmt.Println("Currently Playing: ", song)
+	for _, song := range songList {
+		fmt.Println("Playing:", song)
 		play(song)
-		fmt.Println("Finished Playing")
 	}
 }
